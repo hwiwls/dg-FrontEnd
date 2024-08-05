@@ -17,30 +17,45 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         let window = UIWindow(windowScene: windowScene)
         self.window = window
-//        window.rootViewController = UINavigationController(rootViewController: UploadViewController())
         
-//        do {
-//            try Keychain.shared.deleteToken(kind: .refreshToken)
-//            print("Deleted Access Token")
-//        } catch {
-//            print("Failed to delete Access Token: \(error)")
-//        }
+        do {
+            try Keychain.shared.deleteToken(kind: .refreshToken)
+            print("Deleted Access Token")
+        } catch {
+            print("Failed to delete Access Token: \(error)")
+        }
+
         
         do {
             let refreshToken = try Keychain.shared.getToken(kind: .refreshToken)
             print("Refresh Token: \(refreshToken)")
-            UserInfoDataManager.shared.loginWithProviderInfo { [weak self] in
-                        DispatchQueue.main.async {
-                            self?.window?.rootViewController = TabBarViewController() // 여기를 탭바 컨트롤러로 변경
-                            self?.window?.makeKeyAndVisible()
-                        }
-                    }
+            SignUpService.shared.loginWithProviderInfo { [weak self] in
+                DispatchQueue.main.async {
+                    self?.window?.rootViewController = TabBarViewController() // 여기를 탭바 컨트롤러로 변경
+                    self?.window?.makeKeyAndVisible()
+                }
+            }
         } catch {
             print("Refresh Token not found")
             window.rootViewController = UINavigationController(rootViewController: AuthenticationViewController())
         }
 
         window.makeKeyAndVisible()
+        
+        registerForNotifications()
+    }
+    private func registerForNotifications() {
+        NotificationCenter.default.addObserver(self, selector: #selector(handleRefreshTokenExpired), name: Notification.Name("refreshTokenExpired"), object: nil)
+    }
+
+    @objc private func handleRefreshTokenExpired() {
+        DispatchQueue.main.async {
+            let loginViewController = AuthenticationViewController()
+            if let window = self.window {
+                window.rootViewController = loginViewController
+                window.makeKeyAndVisible()
+            }
+        }
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
